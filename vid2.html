@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>VID</title>
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <style>
+        #messageBox {
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="my-video" class="video-js vjs-default-skin" controls preload="auto" width="800" height="400"
+        data-setup='{}'>
+        <source src="testvideo.mp4" type="video/mp4" />
+        <p class="vjs-no-js">Please enable JavaScript</p>
+    </video>
+
+    <button id="playButton">Play Video</button>
+    <div id="messageBox"></div>
+
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <script>
+        var player = videojs('my-video');
+        var playButton = document.getElementById('playButton');
+        var messageBox = document.getElementById('messageBox');
+
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.style.backgroundColor = type === 'error' ? '#ffcdd2' : '#ffe0b2';
+            messageBox.style.borderColor = type === 'error' ? '#ef5350' : '#ffb74d';
+            messageBox.style.color = type === 'error' ? '#c62828' : '#e65100';
+        }
+
+        function hideMessageBox() {
+            messageBox.style.display = 'none';
+        }
+
+        function setCookie(name, value, days) {
+            var expires = "";
+            if (days) {
+                var date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            var nameEQ = name + "=";
+            var ca = document.cookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        const hasEngagement =
+            getCookie('hasPlayedUnmutedVideoCookie') === 'true' ||
+            localStorage.getItem('hasPlayedUnmutedVideo') === 'true';
+
+        playButton.style.display = 'none';
+
+        player.ready(function () {
+            if (hasEngagement) {
+                player.play().then(function () {
+                    player.muted(false);
+                    console.log("Has Engaged - Autoplay with sound successful - High MEI");
+                    hideMessageBox();
+                }).catch(function (error) {
+                    console.log("Has not Engaged - Autoplay with sound failed (or Low MEI):", error);
+                    player.muted(true);
+                    player.play().then(function () {
+                        console.log("Muted autoplay successful");
+                        showMessage("Click to unmute video", 'info');
+                        playButton.style.display = 'block';
+                    }).catch(function (mutedError) {
+                        console.log("Muted autoplay also failed:", mutedError);
+                        showMessage("Click to play video", 'error');
+                        playButton.style.display = 'block';
+                    });
+                });
+            } else {
+                player.play().then(function () {
+                    player.muted(false);
+                    console.log("Autoplay with sound successful - High MEI");
+                    hideMessageBox();
+                }).catch(function (error) {
+                    console.log("Autoplay with sound failed (Low MEI):", error);
+
+                    player.muted(true);
+                    player.play().then(function () {
+                        console.log("Muted autoplay successful");
+                        showMessage("Click to unmute video", 'info');
+                        playButton.style.display = 'block';
+                    }).catch(function (mutedError) {
+                        console.log("Muted autoplay also failed:", mutedError);
+                        showMessage("Click to play video", 'error');
+                        playButton.style.display = 'block';
+                    });
+                });
+            }
+        });
+
+        playButton.addEventListener('click', function () {
+            player.muted(false);
+            player.play().then(function () {
+                hideMessageBox();
+                playButton.style.display = 'none';
+
+                setCookie('hasPlayedUnmutedVideoCookie', 'true', 365);
+                localStorage.setItem('hasPlayedUnmutedVideo', 'true');
+                console.log("Stored user engagement preference");
+            });
+        });
+
+        player.on('volumechange', function () {
+            if (!player.muted() && player.volume() > 0) {
+                hideMessageBox();
+                playButton.style.display = 'none';
+
+                setCookie('hasPlayedUnmutedVideoCookie', 'true', 365);
+                localStorage.setItem('hasPlayedUnmutedVideo', 'true');
+            }
+        });
+    </script>
+</body>
+
+</html>
